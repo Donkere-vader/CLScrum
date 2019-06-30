@@ -352,13 +352,13 @@ def updateScreen():
         line = line.split(';')
         line[0] = int(line[0])
         if line[0] == 1:
-            todo.append((line[1])[:len(line[1]) - 1])
+            todo.append(line[1])
         if line[0] == 2:
-            busy.append((line[1])[:len(line[1]) - 1])
+            busy.append(line[1])
         if line[0] == 3:
-            done.append((line[1])[:len(line[1]) - 1])
+            done.append(line[1])
         if line[0] == 4:
-            delete.append((line[1])[:len(line[1]) - 1])
+            delete.append(line[1])
 
     # labels to screen:
     labels = []
@@ -449,7 +449,7 @@ def updateScreen():
     if deleteBool:
         deleteButton = Button(text='delete', command=fDelete)
         deleteButton.config(background=bgColor,highlightbackground=bgColor)
-        deleteButton.grid(row=100, column=3)
+        deleteButton.grid(row=1000, column=3)
 
 
 def moveTask(task):
@@ -462,11 +462,11 @@ def moveTask(task):
             continue
         line = line.split(';')
         line[0] = int(line[0])
-        if (line[1])[:len(line[1]) - 1] == task:
+        if line[1] == task:
             if line[0] > 3:
                 line[0] = 0
             line[0] += 1
-            f[x] = str(line[0]) + ';' + line[1]
+            f[x] = str(line[0]) + ';' + line[1] + ';' + line[2]
             file = open(board, 'w')
             for line in f:
                 file.write(line)
@@ -486,8 +486,29 @@ def fDelete():
             line = line.split(';')
             line[0] = int(line[0])
             if line[0] == 4:
-                delete.remove(str(line[1])[:len(line[1]) - 1])
-                line = str(line[0]) + ';' + line[1]
+                agendaF = open(board[:-9] + 'agenda.txt').readlines()
+                x = 0
+                for agendaLine in agendaF:
+                    if agendaLine == '\n' or agendaLine[0] == '#':
+                        x += 1
+                        continue
+                    agendaLine = (agendaLine.replace('\n','')).split(';')
+                    line[2] = line[2].replace('\n','')
+                    if agendaLine[4] == line[2]:
+                        agendaF[x] = ''
+                        break
+                    x += 1
+                try:
+                    agendaF.remove('')
+                except:
+                    pass
+                agendaFile = open(board[:-9] + 'agenda.txt','w')
+                for agendaLine in agendaF:
+                    agendaFile.write(agendaLine)
+                agendaFile.close()
+
+                delete.remove(str(line[1]))
+                line = str(line[0]) + ';' + line[1] + ';' + line[2] + '\n'
                 f.remove(line)
                 break
     file = open(board, 'w')
@@ -500,7 +521,12 @@ def fDelete():
 
 def newTask(dayEntry=None):
     def done(entry, popUpWindow,dayEntry,monthEntry,yearEntry):
+        timeStamp = datetime.now()
         task = entry.get()
+        if ';' in task:
+            popUpWindow.destroy()
+            updateScreen()
+            return ''
         if task.lower() == 'cas is gay':
             extraWindow = Tk()
             extraWindow.title('8===>')
@@ -508,7 +534,7 @@ def newTask(dayEntry=None):
             label.grid()
         elif task != '':
             f = open(board).readlines()
-            f.append(('1' + ';' + task + '\n'))
+            f.append(('1' + ';' + task + ';' + str(timeStamp)+'\n'))
             file = open(board, 'w')
             for line in f:
                 file.write(line)
@@ -529,7 +555,7 @@ def newTask(dayEntry=None):
                 if taskYear == '':
                     taskYear = datetime.now().year
 
-                file.write('\n'+str(taskDay)+';'+str(taskMonth)+';'+str(taskYear)+';'+task)
+                file.write('\n'+str(taskDay)+';'+str(taskMonth)+';'+str(taskYear)+';'+task + ';' + str(timeStamp))
                 file.close()
             popUpWindow.destroy()
             updateScreen()
