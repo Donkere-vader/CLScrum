@@ -1,7 +1,16 @@
 from tkinter import *
 from os import makedirs
+import os
 import shutil
 from datetime import *
+from tkinter import ttk
+
+# TODO:
+# 1. Make a tasks DIR.
+# 2. Perfect layout of taskViewWindow
+
+
+
 
 # to make sure there is a BOARDS.txt file, in the boards directory
 try:
@@ -25,7 +34,7 @@ def openAgenda():
         agendaWindow.destroy()
     except:
         agendaWindow = Tk()
-        agendaWindow.title('Agenda')
+        agendaWindow.title('Calendar')
 
     updateAgenda()
 
@@ -86,7 +95,9 @@ def updateAgenda():
             x = 0
             for line in f:
                 line = line.split(';')
-                if (line[3])[:-1] == activity:
+                if line[0] == '\n':
+                    pass
+                elif line[3] == activity:
                     f[x] = ''
                     break
                 x += 1
@@ -173,6 +184,7 @@ def updateAgenda():
         if line[0] == '\n' or line[0] == '#':
             continue
         line = line.split(';')
+        print(int(line[2]),int(line[1]),int(line[0]))
         activityDate = datetime(int(line[2]),int(line[1]),int(line[0]))
 
         for i in range(0,7):
@@ -317,6 +329,50 @@ def start():
 
     buttons.append(Button(text='delete board', width=21, height=1, font=("Arial", 10), command=deleteBoardWindow))
     buttons[x + 1].grid(row=x + 1, column=1)
+
+def viewTask(task,lst):
+    def updateText(textBox,task,lst):
+        text = textBox.get(1.0,END)
+        f = open(board[:-9]+'tasks/'+ task[1] + ';' + (task[2].replace('\n','')).replace(':','-') + '.txt','w')
+        text = text.split('\n')
+        for line in text:
+            if line != '':
+                f.write(line+'\n')
+        f.close()
+        viewTask(task,lst)
+
+    #Get the correct task and task
+    f = open(board).readlines()
+    for line in f:
+        line = line.split(';')
+        if line[1] == task:
+            task = line
+    global viewTaskWindow
+    try:
+        for i in viewTaskWindow.winfo_children():
+            i.destroy()
+    except:
+        viewTaskWindow = Tk()
+    viewTaskWindow.title(lst.upper()+': '+task[1])
+
+    lb11 = Label(master=viewTaskWindow,text=lst+': '+task[1],font=('arial',15)).grid(columnspan=1000)
+    f = open(board[:-9]+'tasks/'+task[1] + ';' + (task[2].replace('\n','')).replace(':','-') +'.txt','r').readlines()
+    x = ''
+    for line in f:
+        x = x + line
+
+    textBox = Text(master=viewTaskWindow,width=25,height=10,background='lightgrey')
+    textBox.grid(columnspan=3)
+    textBox.insert(END,x)
+
+    updateButton = Button(master=viewTaskWindow, text='UpdateText',command= lambda lst=lst, textBox=textBox, task=task: updateText(textBox, task, lst))
+    updateButton.grid(column=0)
+
+    deleteButton = Button(master=viewTaskWindow,text='Delete',command= lambda task=task,: fDelete(task))
+    deleteButton.grid(column=1,row=2)
+
+    moveButton = Button(master=viewTaskWindow, text='Move',command= lambda task=task: moveTask(task))
+    moveButton.grid(column=2,row=2)
  
 
 def updateScreen():
@@ -357,8 +413,6 @@ def updateScreen():
             busy.append(line[1])
         if line[0] == 3:
             done.append(line[1])
-        if line[0] == 4:
-            delete.append(line[1])
 
     # labels to screen:
     labels = []
@@ -368,13 +422,6 @@ def updateScreen():
         labels[x].config(background=bgColor,highlightbackground=bgColor)
         labels[x].grid(row=0, column=x)
         x += 1
-
-    deleteBool = False
-    if len(delete) != 0:
-        deleteBool = True
-        labels.append(Label(text='delete', font=('arial', 15)))
-        labels[3].config(background=bgColor,highlightbackground=bgColor)
-        labels[3].grid(row=0, column=3)
 
     # Add tasks to screen
     cards = []
@@ -387,7 +434,7 @@ def updateScreen():
             texttask = task[:30] + '\n' + task[30:]
         else:
             texttask = task
-        cards.append(Button(anchor='w',justify=LEFT, text=texttask, width=space, height=2, font=('arial', 12), pady=0,command=lambda task=task: moveTask(task)))
+        cards.append(Button(anchor='w',justify=LEFT, text=texttask, width=space, height=2, font=('arial', 12), pady=0,command=lambda lst='Todo', task=task: viewTask(task,lst)))
         cards[x].config(background='lightgrey',highlightbackground='lightgrey')
         cards[x].grid(row=y, column=0)
         x += 1
@@ -399,7 +446,7 @@ def updateScreen():
             texttask = task[:30] + '\n' + task[30:]
         else:
             texttask = task
-        cards.append(Button(anchor='w',justify=LEFT, text=texttask, width=space, height=2, font=('arial', 12), pady=0,command=lambda task=task: moveTask(task)))
+        cards.append(Button(anchor='w',justify=LEFT, text=texttask, width=space, height=2, font=('arial', 12), pady=0,command=lambda lst='Busy', task=task: viewTask(task,lst)))
         cards[x].config(background='lightgrey',highlightbackground='lightgrey')
         cards[x].grid(row=y, column=1)
         x += 1
@@ -412,22 +459,9 @@ def updateScreen():
             texttask = task[:30] + '\n' + task[30:]
         else:
             texttask = task
-        cards.append(Button(anchor='w',justify=LEFT, text=texttask, width=space, height=2, font=('arial', 12), pady=0,command=lambda task=task: moveTask(task)))
+        cards.append(Button(anchor='w',justify=LEFT, text=texttask, width=space, height=2, font=('arial', 12), pady=0,command=lambda lst='Done', task=task: viewTask(task,lst)))
         cards[x].config(background='lightgrey',highlightbackground='lightgrey')
         cards[x].grid(row=y, column=2)
-        x += 1
-        y += 1
-        if y == height:
-            height += 1
-    y = 1
-    for task in delete:
-        if len(task) > 30:
-            texttask = task[:30] + '\n' + task[30:]
-        else:
-            texttask = task
-        cards.append(Button(anchor='w',justify=LEFT, text=texttask, width=space, height=2, font=('arial', 12), pady=0,command=lambda task=task: moveTask(task)))
-        cards[x].config(background='red',highlightbackground='red')
-        cards[x].grid(row=y, column=3)
         x += 1
         y += 1
         if y == height:
@@ -443,13 +477,9 @@ def updateScreen():
     newButton = Button(text='New task', command=newTask)
     newButton.grid(row=1000)
 
-    agendaButton = Button(text='Agenda', command=openAgenda)
+    agendaButton = Button(text='Calendar', command=openAgenda)
     agendaButton.grid(row=1000,column=1)
 
-    if deleteBool:
-        deleteButton = Button(text='delete', command=fDelete)
-        deleteButton.config(background=bgColor,highlightbackground=bgColor)
-        deleteButton.grid(row=1000, column=3)
 
 
 def moveTask(task):
@@ -462,8 +492,8 @@ def moveTask(task):
             continue
         line = line.split(';')
         line[0] = int(line[0])
-        if line[1] == task:
-            if line[0] > 3:
+        if line[1] == task[1]:
+            if line[0] > 2:
                 line[0] = 0
             line[0] += 1
             f[x] = str(line[0]) + ';' + line[1] + ';' + line[2]
@@ -475,59 +505,62 @@ def moveTask(task):
     updateScreen()
 
 
-def fDelete():
+def fDelete(task):
     f = open(board).readlines()
-    while len(delete) > 0:
-        if len(f) == 0:
-            break
-        for line in f:
-            if line[0] == '#':
-                continue
-            line = line.split(';')
-            line[0] = int(line[0])
-            if line[0] == 4:
-                agendaF = open(board[:-9] + 'agenda.txt').readlines()
-                x = 0
-                for agendaLine in agendaF:
-                    if agendaLine == '\n' or agendaLine[0] == '#':
-                        x += 1
-                        continue
-                    agendaLine = (agendaLine.replace('\n','')).split(';')
-                    line[2] = line[2].replace('\n','')
-                    if agendaLine[4] == line[2]:
-                        agendaF[x] = ''
-                        break
-                    x += 1
-                try:
-                    agendaF.remove('')
-                except:
-                    pass
-                agendaFile = open(board[:-9] + 'agenda.txt','w')
-                for agendaLine in agendaF:
-                    agendaFile.write(agendaLine)
-                agendaFile.close()
-
-                delete.remove(str(line[1]))
-                line = str(line[0]) + ';' + line[1] + ';' + line[2] + '\n'
-                f.remove(line)
-                break
-    file = open(board, 'w')
     for line in f:
-        file.write(line)
+        if line == '\n':
+            continue
+        linex = line.split(';')
+        if linex[1] == task[1]:
+            f.remove(line)
+            os.remove(board[:-9] + 'tasks/' + task[1] + ';' + (str(task[2]).replace('\n','')).replace(':','-') +'.txt')
+            agendaF = open(board[:-9]+'agenda.txt').readlines()
+            for line1 in agendaF:
+                if line1 == '\n':
+                    continue
+                line1x = line1.split(';')
+                if line1x[3] == task[1]:
+                    agendaF.remove(line1)
+                    break
+            agendaFile = open(board[:-9]+'agenda.txt','w')
+            for line1 in agendaF:
+                if line1 != '\n':
+                    agendaFile.write(line1)
+
+            break
+    file = open(board,'w')
+    for line in f:
+        if line != '\n':
+            file.write(line)
     file.close()
-
     updateScreen()
+    global viewTaskWindow
+    viewTaskWindow.destroy()
 
 
-def newTask(dayEntry=None):
-    def done(entry, popUpWindow,dayEntry,monthEntry,yearEntry):
+def newTask():
+    def done(entry, popUpWindow,dayEntry,monthEntry,yearEntry,checkBox):
         timeStamp = datetime.now()
         task = entry.get()
-        if ';' in task:
-            popUpWindow.destroy()
-            updateScreen()
-            return ''
-        if task.lower() == 'cas is gay':
+        f = open(board).readlines()
+        for line in f:
+            line = line.split(';')
+            if task == line[1]:
+                def close():
+                    extraWindow.destroy()
+                extraWindow = Tk()
+                extraWindow.title('ERROR')
+                label = Label(master=extraWindow,text='That task already exists')
+                label.grid()
+                button = Button(master=extraWindow,text='Ok',command=close)
+                button.grid()
+                return
+        if ';' in task or '?' in task or ':' in task or '/' in task or '\\' in task or '*' in task or '<' in task or '>' in task or '|' in task:
+            extraWindow = Tk()
+            extraWindow.title('ERROR')
+            label = Label(master=extraWindow, text='Task name can not include a ; : ? * / \\ < > or | ', font=('Arial', 13))
+            label.grid()
+        elif task.lower() == 'cas is gay':
             extraWindow = Tk()
             extraWindow.title('8===>')
             label = Label(master=extraWindow,text='JE BENT ZELF GAY!',font=('Arial',30))
@@ -539,9 +572,14 @@ def newTask(dayEntry=None):
             for line in f:
                 file.write(line)
             file.close()
-            print(checkBoxValue)
-            if checkBoxValue == 0:
-                f = open(board[:-9] + 'agenda.txt').readlines()
+            x = checkBox.state()
+            if x == ('selected',) or x == ('focus','selected'):
+                try:
+                    f = open(board[:-9] + 'agenda.txt').readlines()
+                except:
+                    f = open(board[:-9] + 'agenda.txt','w')
+                    f.close()
+                    f = open(board[:-9] + 'agenda.txt').readlines()
                 file = open(board[:-9] + 'agenda.txt','w')
                 for line in f:
                     file.write(line)
@@ -555,8 +593,26 @@ def newTask(dayEntry=None):
                 if taskYear == '':
                     taskYear = datetime.now().year
 
-                file.write('\n'+str(taskDay)+';'+str(taskMonth)+';'+str(taskYear)+';'+task + ';' + str(timeStamp))
-                file.close()
+                try:
+                    datetime(taskYear,taskDay,taskMonth)
+                    file.write(str(taskDay) + ';' + str(taskMonth) + ';' + str(taskYear) + ';' + task + ';' + str(timeStamp) + '\n')
+                    file.close()
+                except:
+                    def done():
+                        extraWindow.destroy()
+                    extraWindow = Tk()
+                    extraWindow.title('ERROR')
+
+                    label = Label(master=extraWindow,text='Date fromat should be DD MM YYYY, your entered date is not possible\n The task is added, how ever not in the calendar...').grid()
+                    button = Button(master=extraWindow,text='OK',command=done).grid()
+                    updateScreen()
+
+            try:
+                f = open(board[:-9]+'tasks/' + task + ';' + str(timeStamp).replace(':','-') + '.txt','w+')
+            except:
+                makedirs(board[:-9] + 'tasks/')
+                f = open(board[:-9] + 'tasks/' + task + ';' + str(timeStamp).replace(':','-') + '.txt', 'w+')
+
             popUpWindow.destroy()
             updateScreen()
             return ''
@@ -567,18 +623,17 @@ def newTask(dayEntry=None):
     entry = Entry(master=popUpWindow)
     entry.grid(row=1,columnspan=10)
 
-    checkBoxValue = 0
-    checkBox = Checkbutton(master=popUpWindow,text='Include in calander',variable=checkBoxValue)
-    checkBox.grid(row=2,columnspan=10)
+    checkBox = ttk.Checkbutton(master=popUpWindow,text='Include in calendar')
+    checkBox.grid(columnspan=10)
 
     dayEntry = Entry(master=popUpWindow,width=4)
     dayEntry.grid(row=3,column=0)
     monthEntry = Entry(master=popUpWindow,width=4)
     monthEntry.grid(row=3,column=1)
-    yearEntry = Entry(master=popUpWindow,width=4)
+    yearEntry = Entry(master=popUpWindow,width=6)
     yearEntry.grid(row=3,column=2)
 
-    btn = Button(master=popUpWindow, text='Done',command=lambda dayEntryday=dayEntry, monthEntry=monthEntry, yearEntry=yearEntry, entry=entry, popUpWindow=popUpWindow: done(entry, popUpWindow,dayEntry,monthEntry,yearEntry))
+    btn = Button(master=popUpWindow, text='Done',command=lambda dayEntryday=dayEntry, monthEntry=monthEntry, yearEntry=yearEntry, entry=entry, popUpWindow=popUpWindow,checkBox=checkBox: done(entry, popUpWindow,dayEntry,monthEntry,yearEntry,checkBox))
     btn.grid(row=1, column=11)
 
 start()
