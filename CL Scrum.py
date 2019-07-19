@@ -90,14 +90,13 @@ def updateAgenda():
 
     def viewDay(day, vandaagInfo):
         def deleteActivity(activity):
-            print(activity)
             f = open(board[:-9] + 'agenda.txt').readlines()
             x = 0
             for line in f:
                 line = line.split(';')
                 if line[0] == '\n':
                     pass
-                elif line[3] == activity:
+                elif line[3].replace('\n','') == activity:
                     f[x] = ''
                     break
                 x += 1
@@ -122,7 +121,6 @@ def updateAgenda():
         vandaagInfo = vandaagInfo.split('\n')
         vandaagInfo.remove('')
         for activity in vandaagInfo:
-            print(activity)
             activityLabels.append(Label(master=viewDayWindow,text=activity,font=('arial',13)))
             activityLabels[x].config(anchor='nw',justify='left',width=30)
             activityLabels[x].grid(row=x+1,column=1)
@@ -184,7 +182,6 @@ def updateAgenda():
         if line[0] == '\n' or line[0] == '#':
             continue
         line = line.split(';')
-        print(int(line[2]),int(line[1]),int(line[0]))
         activityDate = datetime(int(line[2]),int(line[1]),int(line[0]))
 
         for i in range(0,7):
@@ -340,6 +337,7 @@ def viewTask(task,lst):
                 f.write(line+'\n')
         f.close()
         viewTask(task,lst)
+        viewTaskWindow.destroy()
 
     #Get the correct task and task
     f = open(board).readlines()
@@ -355,18 +353,18 @@ def viewTask(task,lst):
         viewTaskWindow = Tk()
     viewTaskWindow.title(lst.upper()+': '+task[1])
 
-    lb11 = Label(master=viewTaskWindow,text=lst+': '+task[1],font=('arial',15)).grid(columnspan=1000)
+    lb11 = Label(master=viewTaskWindow,text=lst+': '+task[1],font=('arial',15))
+    lb11.grid(columnspan=1000)
     f = open(board[:-9]+'tasks/'+task[1] + ';' + (task[2].replace('\n','')).replace(':','-') +'.txt','r').readlines()
     x = ''
     for line in f:
         x = x + line
 
-    textBox = Text(master=viewTaskWindow,width=25,height=10,background='lightgrey')
+    textBox = Text(master=viewTaskWindow,width=50,height=10,background='lightgrey')
     textBox.grid(columnspan=3)
     textBox.insert(END,x)
 
-    updateButton = Button(master=viewTaskWindow, text='UpdateText',command= lambda lst=lst, textBox=textBox, task=task: updateText(textBox, task, lst))
-    updateButton.grid(column=0)
+    viewTaskWindow.protocol("WM_DELETE_WINDOW", lambda textBox=textBox, task=task, lst=lst: updateText(textBox, task, lst))
 
     deleteButton = Button(master=viewTaskWindow,text='Delete',command= lambda task=task,: fDelete(task))
     deleteButton.grid(column=1,row=2)
@@ -591,10 +589,10 @@ def newTask():
                 if taskMonth == '':
                     taskMonth = datetime.now().month
                 if taskYear == '':
-                    taskYear = datetime.now().year
+                            taskYear = datetime.now().year
 
                 try:
-                    datetime(taskYear,taskDay,taskMonth)
+                    datetime(int(taskYear),int(taskMonth),int(taskDay))
                     file.write(str(taskDay) + ';' + str(taskMonth) + ';' + str(taskYear) + ';' + task + ';' + str(timeStamp) + '\n')
                     file.close()
                 except:
