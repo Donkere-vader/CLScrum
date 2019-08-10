@@ -3,7 +3,7 @@ from os import makedirs
 import os
 import shutil
 from datetime import *
-from tkinter import ttk
+from sys import exit
 
 try:
     makedirs('boards')
@@ -485,16 +485,26 @@ def viewTask(task,lst):
             moveTask(task,lst)
         elif key.char == '\x1b':
             updateText(textBox,task,lst)
-    def updateText(textBox,task,lst):
-        text = textBox.get(1.0,END)
-        f = open(board[:-9]+'tasks/'+ task[1] + ';' + (task[2].replace('\n','')).replace(':','-') + '.txt','w')
+    def updateText(textBox,task,lst,entry):
+        f = open(board).readlines()
+        file = open(board,'w')
+        for line in f:
+            if line.split(';')[1] == task[1]:
+                line = line.split(';')
+                file.write(line[0]+';'+entry.get()+';'+line[2])
+                os.remove(board[:-9] + 'tasks/' + task[1] + ';' + (task[2].replace('\n', '')).replace(':', '-')+'.txt')
+            else:
+                file.write(line)
+        file.close()
+        text = textBox.get(1.0, END)
+        f = open(board[:-9] + 'tasks/' + entry.get() + ';' + (task[2].replace('\n', '')).replace(':', '-') + '.txt', 'w')
         text = text.split('\n')
         for line in text:
             if line != '':
-                f.write(line+'\n')
+                f.write(line + '\n')
         f.close()
-        viewTask(task,lst)
         viewTaskWindow.destroy()
+        updateScreen()
 
     #Get the correct task and task
     f = open(board).readlines()
@@ -520,8 +530,11 @@ def viewTask(task,lst):
     viewTaskWindow.focus_force()
     viewTaskWindow.config(bg=bgColor)
 
-    lb11 = Label(master=viewTaskWindow,text=lst+': '+task[1],font=('arial',15),background=bgColor,fg=textColor)
-    lb11.grid(columnspan=1000)
+    lbl1 = Label(master=viewTaskWindow,text=lst+': ',font=('arial',15),background=bgColor,fg=textColor)
+    lbl1.grid(column=0)
+    entry = Entry(master=viewTaskWindow,font=('arial',15),background=bgColor,fg=textColor)
+    entry.insert(0,task[1])
+    entry.grid(row=0,column=1)
     f = open(board[:-9]+'tasks/'+task[1] + ';' + (task[2].replace('\n','')).replace(':','-') +'.txt','r').readlines()
     x = ''
     for line in f:
@@ -531,7 +544,7 @@ def viewTask(task,lst):
     textBox.grid(columnspan=3)
     textBox.insert(END,x)
 
-    viewTaskWindow.protocol("WM_DELETE_WINDOW", lambda textBox=textBox, task=task, lst=lst: updateText(textBox, task, lst))
+    viewTaskWindow.protocol("WM_DELETE_WINDOW", lambda textBox=textBox, entry=entry, task=task, lst=lst: updateText(textBox, task, lst, entry))
 
     deleteButton = Button(master=viewTaskWindow,text='Delete',command= lambda task=task,lst=lst: fDelete(task,lst))
     deleteButton.grid(column=1,row=2)
@@ -798,7 +811,13 @@ def fDelete(task,lst):
     file.write(str(scrolled))
     file.close()
     updateScreen()
-    global viewTaskWindow
+    global viewTaskWindow, agendaWindow
+    try:
+        for i in agendaWindow.winfo_children():
+            i.destroy
+        updateAgenda()
+    except:
+        pass
     viewTaskWindow.destroy()
 
 def rootKeyPressed(key):
@@ -888,6 +907,13 @@ def newTask():
                 makedirs(board[:-9] + 'tasks/')
                 f = open(board[:-9] + 'tasks/' + task + ';' + str(timeStamp).replace(':','-') + '.txt', 'w+')
 
+            global agendaWindow
+            try:
+                for i in agendaWindow.winfo_children():
+                    i.destroy
+                updateAgenda()
+            except:
+                pass
             popUpWindow.destroy()
             updateScreen()
             return ''
