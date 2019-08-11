@@ -378,6 +378,16 @@ def updateAgenda():
                 line[3] = line[3].replace('\n','')
                 dagInfo[i] = dagInfo[i] + '\n' + line[3]
 
+    x = 0
+    for day in dagInfo:
+        day = day.split('\n')
+        day = sorted(day)
+        day.remove('')
+        dagInfo[x] = ''
+        for item in day:
+            dagInfo[x] = dagInfo[x] + '\n' + item
+        x += 1
+
     dayBgColor = 'lightgreen'
     if bgColor == 'lightgreen':
         dayBgColor = 'green2'
