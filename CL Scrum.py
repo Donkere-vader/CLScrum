@@ -4,6 +4,7 @@ import os
 import shutil
 from datetime import *
 from sys import exit
+from tkinter import messagebox
 
 try:
     makedirs('boards')
@@ -38,8 +39,17 @@ def settings():
         settingsWindow = Tk()
         settingsWindow.title('Settings')
 
+    def checkNewLists():
+        f = open(board[:-9]+'lists.txt').readlines()
+        file = open(board[:-9]+'lists.txt','w')
+        for line in f:
+            if line != 'newList;0\n':
+                file.write(line)
+        settingsWindow.destroy()
+
     settingsWindow.bind('<Key>',settingsWindowKeyPressed)
     settingsWindow.config(bg=((open('boards/settings.txt').readlines())[0].split(':'))[1].replace('\n',''))
+    settingsWindow.protocol("WM_DELETE_WINDOW",checkNewLists)
     settingsWindow.focus_force()
 
     #BACKGROUND COLOR:
@@ -58,6 +68,7 @@ def settings():
         updateScreen()
         settings()
 
+    #Set the maximum amount of cards
     def setMaxCards(entry):
         maxCards = entry.get()
         error = False
@@ -88,6 +99,40 @@ def settings():
         updateScreen()
         settingsWindow.focus_force()
 
+    def newList(listEntrys):
+        if setLists(listsEntrys):
+            f = open(board[:-9] + 'lists.txt').readlines()
+            file = open(board[:-9] + 'lists.txt','w')
+            f.append('newList;0\n')
+            for line in f:
+                file.write(line)
+            file.close()
+            settings()
+
+    def setLists(listsEntrys):
+        givenLists = []
+        for entry in listsEntrys:
+            if givenLists.count(entry.get()) != 0:
+                messagebox.showerror('ERROR', 'No duplicate list names alowed.')
+                settingsWindow.focus_force()
+                return False
+            elif entry.get().replace('\n','') == '':
+                continue
+            givenLists.append(entry.get())
+        if 'newList' in givenLists:
+            messagebox.showerror('ERROR','Give the new list a name first.')
+            settingsWindow.focus_force()
+            return False
+        file = open(board[:-9]+'lists.txt','w')
+        for lstName in givenLists:
+            file.write(lstName.replace('\n','')+';0\n')
+        file.close()
+        settings()
+        updateScreen()
+        settingsWindow.focus_force()
+        return True
+
+
     textcolor = 'black'
     if ((open('boards/settings.txt').readlines())[0].split(':'))[1].replace('\n','') in ['black','grey22','blue']:
         textcolor = 'white'
@@ -101,6 +146,9 @@ def settings():
             textcolor = 'white'
         colorButtons.append(Button(master=settingsWindow,text=color,bg=color,fg=textcolor,command= lambda color=color: setBgColor(color)).grid(column=colors.index(color),row=1))
 
+    textcolor = 'black'
+    if ((open('boards/settings.txt').readlines())[0].split(':'))[1].replace('\n', '') in ['black', 'grey22', 'blue']:
+        textcolor = 'white'
     lbl2 = Label(master=settingsWindow, text='Max cards:', fg=textcolor, font=('Arial', 20),bg=((open('boards/settings.txt').readlines())[0].split(':'))[1].replace('\n', '')).grid(row=2,columnspan=1000)
     entry = Entry(master=settingsWindow,fg=textcolor,bg=((open('boards/settings.txt').readlines())[0].split(':'))[1].replace('\n', ''))
     entry.insert(0,((open('boards/settings.txt').readlines())[1].split(':'))[1].replace('\n', ''))
@@ -108,6 +156,25 @@ def settings():
 
     confirmButton = Button(master=settingsWindow,text='Ok',command=lambda entry=entry: setMaxCards(entry))
     confirmButton.grid(row=3,column=4,columnspan=1000)
+
+    listsLabel = Label(master=settingsWindow, text='Lists:', fg=textcolor, font=('Arial', 20),bg=((open('boards/settings.txt').readlines())[0].split(':'))[1].replace('\n', '')).grid(row=4,columnspan=1000)
+
+    listsEntrys = []
+    lists = open(board[:-9]+'lists.txt').readlines()
+    x = 0
+    for line in lists:
+        lists[x] = line.split(';')[0]
+        x += 1
+    x = 0
+    for lst in lists:
+        listsEntrys.append(Entry(master=settingsWindow,font=('arial',15),bg=((open('boards/settings.txt').readlines())[0].split(':'))[1].replace('\n', ''),fg=textcolor))
+        listsEntrys[x].grid(row=x+5,columnspan=1000)
+        listsEntrys[x].insert(0,lst)
+        x += 1
+    listsConfirmButton = Button(master=settingsWindow,text='Ok',command=lambda listEntrys=listsEntrys: setLists(listsEntrys))
+    listsConfirmButton.grid(row=x+5,column=0,columnspan=1000)
+    newListButton = Button(master=settingsWindow,text='New List',command=lambda listEntrys=listsEntrys: newList(listsEntrys))
+    newListButton.grid(row=x+5,column=3,columnspan=1000)
 
 def openAgenda():
     def agendaWindowKeyPressed(key):
@@ -421,6 +488,14 @@ def boardSelect(brd):
     board = 'boards/' + brd + '/board.txt'
     global root
     root.destroy()
+
+    try:
+        f = open('boards/'+brd+'/todoScrolled.txt').readlines()
+        messagebox.showwarning('WARNING','You need to run the "Update.exe" first.\n\nIt will update all the files so that they are compatible with this version of CL Scrum')
+        return
+    except:
+        pass
+
     try:
         f = open('boards/'+brd+'/agenda.txt').readlines()
     except:
@@ -431,17 +506,18 @@ def boardSelect(brd):
     except:
         f = open(board,'w')
 
-    f = open('boards/'+brd+'/todoScrolled.txt','w')
-    f.write('0')
-    f.close()
-
-    f = open('boards/' + brd + '/busyScrolled.txt', 'w')
-    f.write('0')
-    f.close()
-
-    f = open('boards/' + brd + '/doneScrolled.txt', 'w')
-    f.write('0')
-    f.close()
+    try:
+        f = open(board[:-9]+'lists.txt').readlines()
+    except:
+        f = open(board[:-9]+'lists.txt','w')
+        f.write('list1;0\nlist2;0\nlist3;0\n')
+        f.close()
+    f = open(board[:-9] + 'lists.txt').readlines()
+    file = open(board[:-9] + 'lists.txt', 'w')
+    for line in f:
+        line = line.split(';')
+        file.write(line[0]+';'+'0\n')
+    file.close()
 
     root = Tk()
     updateScreen()
@@ -477,6 +553,8 @@ def start():
     buttons.append(Button(text='delete board', width=21, height=1, font=("Arial", 10), fg=textcolor, bg=bgColor,command=deleteBoardWindow))
     buttons[x + 1].grid(row=x + 1, column=1)
 
+    versionLabel = Label(text='(CL Scrum V 1.4) ©CasLinders',width=40,font=('arial',10), fg=textcolor, bg=bgColor,anchor='nw',justify='left').grid(row=x+2,column=0,columnspan=2)
+
 def viewTask(task,lst):
     def viewTaskWindowKeyPressed(key):
         if key.char == 'd' or key.char == 'D':
@@ -486,6 +564,13 @@ def viewTask(task,lst):
         elif key.char == '\x1b':
             updateText(textBox,task,lst)
     def updateText(textBox,task,lst,entry):
+        f = open(board).readlines()
+        tasks = []
+        for line in f:
+            tasks.append(line.split(';')[1])
+        if entry.get() in tasks and entry.get() != task[1]:
+            messagebox.showerror('Warning','Task already exists')
+            return
         f = open(board).readlines()
         file = open(board,'w')
         for line in f:
@@ -507,11 +592,7 @@ def viewTask(task,lst):
         updateScreen()
 
     #Get the correct task and task
-    f = open(board).readlines()
-    for line in f:
-        line = line.split(';')
-        if line[1] == task:
-            task = line
+    textTask = task.fullName.split(';')
     global viewTaskWindow
     try:
         for i in viewTaskWindow.winfo_children():
@@ -525,17 +606,17 @@ def viewTask(task,lst):
     else:
         textColor = 'black'
 
-    viewTaskWindow.title(lst.upper()+': '+task[1])
+    viewTaskWindow.title(lst.name.upper()+': '+textTask[1])
     viewTaskWindow.bind('<Key>',viewTaskWindowKeyPressed)
     viewTaskWindow.focus_force()
     viewTaskWindow.config(bg=bgColor)
 
-    lbl1 = Label(master=viewTaskWindow,text=lst+': ',font=('arial',15),background=bgColor,fg=textColor)
+    lbl1 = Label(master=viewTaskWindow,text=lst.name+': ',font=('arial',15),background=bgColor,fg=textColor)
     lbl1.grid(column=0)
     entry = Entry(master=viewTaskWindow,font=('arial',15),background=bgColor,fg=textColor)
-    entry.insert(0,task[1])
+    entry.insert(0,textTask[1])
     entry.grid(row=0,column=1)
-    f = open(board[:-9]+'tasks/'+task[1] + ';' + (task[2].replace('\n','')).replace(':','-') +'.txt','r').readlines()
+    f = open(board[:-9]+'tasks/'+textTask[1] + ';' + (textTask[2].replace('\n','')).replace(':','-') +'.txt','r').readlines()
     x = ''
     for line in f:
         x = x + line
@@ -544,12 +625,12 @@ def viewTask(task,lst):
     textBox.grid(columnspan=3)
     textBox.insert(END,x)
 
-    viewTaskWindow.protocol("WM_DELETE_WINDOW", lambda textBox=textBox, entry=entry, task=task, lst=lst: updateText(textBox, task, lst, entry))
+    viewTaskWindow.protocol("WM_DELETE_WINDOW", lambda textBox=textBox, entry=entry, textTask=textTask, task=task, lst=lst: updateText(textBox, textTask, lst, entry))
 
-    deleteButton = Button(master=viewTaskWindow,text='Delete',command= lambda task=task,lst=lst: fDelete(task,lst))
+    deleteButton = Button(master=viewTaskWindow,text='Delete',command= lambda textTask=textTask,lst=lst: fDelete(textTask,lst))
     deleteButton.grid(column=1,row=2)
 
-    moveButton = Button(master=viewTaskWindow, text='Move',command= lambda task=task,lst=lst: moveTask(task,lst))
+    moveButton = Button(master=viewTaskWindow, text='Move',command= lambda lst=lst,task=task: moveTask(task,lst))
     moveButton.grid(column=2,row=2)
  
 
@@ -577,36 +658,71 @@ def updateScreen():
     root.focus_force()
     root.protocol("WM_DELETE_WINDOW", close)
 
+    class Task():
+        def __init__(self, task):
+            self.fullName = task
+            task = task.split(';')
+            self.listNum = task[0]
+            self.name = task[1]
+            self.identifier = task[2]
+
+    #List and task class
+    class List():
+        def __init__(self,name,scrolled):
+            self.name = name
+            self.index = len(lists)
+            items = []
+            f = open(board).readlines()
+            for line in f:
+                if int(line.split(';')[0]) == self.index:
+                    items.append(Task(line))
+            self.items = items
+            self.scrolled = scrolled
+
+        def scroll(self,direction):
+            f = open(board[:-9]+'lists.txt').readlines()
+            file = open(board[:-9]+'lists.txt','w')
+            for line in f:
+                if line.split(';')[0] == self.name:
+                    line = line.split(';')
+                    line[1] = str(int(line[1].replace('\n','')) + direction)
+                    file.write(line[0]+';'+line[1]+'\n')
+                else:
+                    file.write(line)
+            file.close()
+            updateScreen()
+
     # the lists
-    todo = []
-    busy = []
-    done = []
-    global delete
+    global delete,lists
     delete = []
+    lists = []
+
+    try:
+        scrolled = 0
+        listsF = open(board[:-9] + 'lists.txt').readlines()
+        for i in range(0, len(listsF)):
+            listsF[i] = listsF[i].replace('\n', '')
+            scrolled = int(listsF[i].split(';')[1].replace('\n', ''))
+            lists.append(List(listsF[i].split(';')[0],scrolled))
+
+    except IndexError:
+        listsF = open(board[:-9] + 'lists.txt', 'w')
+        listsF.close()
+        listsF = open(board[:-9] + 'lists.txt').readlines()
+        for i in range(0, len(listsF)):
+            listsF[i] = listsF[i].replace('\n', '')
+            scrolled = int(listsF[i].split(';')[1].replace('\n', ''))
+            lists.append(List(listsF[i].split(';')[0],scrolled))
 
     # other variables
     space = 30  # width for the buttons and labels
 
-    # create lists from the file
-    f = open(board).readlines()
-
-    for line in f:
-        if line[0] == '#':
-            continue
-        line = line.split(';')
-        line[0] = int(line[0])
-        if line[0] == 1:
-            todo.append(line[1])
-        if line[0] == 2:
-            busy.append(line[1])
-        if line[0] == 3:
-            done.append(line[1])
-
     # labels to screen:
     labels = []
     x = 0
-    for listType in ['To Do', 'Busy', 'Done']:
-        labels.append(Label(text=listType, font=('arial', 15), width=25,fg=textColor))
+
+    for listType in lists:
+        labels.append(Label(text=listType.name, font=('arial', 15), width=25,fg=textColor))
         labels[x].config(background=bgColor,highlightbackground=bgColor)
         labels[x].grid(row=0, column=x)
         x += 1
@@ -614,116 +730,47 @@ def updateScreen():
     # Add tasks to screen
     cards = []
     x = 0
-    y = 1
-    todoScrolled = int(open(board[:-9]+'todoscrolled.txt').readlines()[0])
-    busyScrolled = int(open(board[:-9] + 'busyscrolled.txt').readlines()[0])
-    doneScrolled = int(open(board[:-9] + 'donescrolled.txt').readlines()[0])
-
-    def scroll(lst,direction):
-        if direction == 'up':
-            if lst == 'todo':
-                open(board[:-9] + 'todoscrolled.txt', 'w').write(str(todoScrolled - 1))
-                updateScreen()
-            elif lst == 'busy':
-                open(board[:-9] + 'busyscrolled.txt', 'w').write(str(busyScrolled - 1))
-                updateScreen()
-            elif lst == 'done':
-                open(board[:-9] + 'donescrolled.txt', 'w').write(str(doneScrolled - 1))
-                updateScreen()
-        elif direction == 'down':
-            if lst == 'todo':
-                open(board[:-9] + 'todoscrolled.txt', 'w').write(str(todoScrolled + 1))
-                updateScreen()
-            elif lst == 'busy':
-                open(board[:-9] + 'busyscrolled.txt', 'w').write(str(busyScrolled + 1))
-                updateScreen()
-            elif lst == 'done':
-                open(board[:-9] + 'donescrolled.txt', 'w').write(str(doneScrolled + 1))
-                updateScreen()
 
 
     height = 0
     count = 0
     maxCards = int(open('boards/settings.txt').readlines()[1].split(':')[1].replace('\n',''))
-    for task in todo:
-        if count >= todoScrolled:
-            if todoScrolled != 0 and count == todoScrolled:
-                cards.append(Button(text='/\\', width=space, height=1, font=('arial', 12), pady=0, background='grey',command=lambda lst='todo', direction='up': scroll(lst, direction)))
-                cards[x].grid(row=y, column=0)
+    listIndexNum = 0
+
+    for currentList in lists:
+        y = 1
+        height = 0
+        count = 0
+        for fullTask in currentList.items:
+            task = fullTask.fullName.split(';')[1].replace('\n','')
+            if count >= currentList.scrolled:
+                if currentList.scrolled != 0 and count == currentList.scrolled:
+                    cards.append(Button(text='/\\', width=space, height=1, font=('arial', 12), pady=0, background='grey',command=lambda lst=currentList, direction=-1: lst.scroll(direction)))
+                    cards[x].grid(row=y, column=currentList.index)
+                    x += 1
+                elif count == 0:
+                    nothingNess = Label(text=' ',bg=bgColor,height=1,font=('arial',16)).grid(row=y,column=currentList.index)
+                y += 1
+                for i in range(1,round(len(task)/30)):
+                    texttask = task[:i*30] + '\n' + task[30:]
+                else:
+                    texttask = task
+                cards.append(Button(anchor='w',justify=LEFT, text=texttask, width=space, height=2+texttask.count('\n'), font=('arial', 12), pady=0,command=lambda lst=currentList, task=fullTask: viewTask(task,lst)))
+                cards[x].config(background='lightgrey',highlightbackground='lightgrey')
+                cards[x].grid(row=y, column=currentList.index)
                 x += 1
-            elif count == 0:
-                nothingNess = Label(text=' ',bg=bgColor,height=1)
-                nothingNess.grid(row=y,column=0)
-            y += 1
-            if len(task) > 30:
-                texttask = task[:30] + '\n' + task[30:]
-            else:
-                texttask = task
-            cards.append(Button(anchor='w',justify=LEFT, text=texttask, width=space, height=2, font=('arial', 12), pady=0,command=lambda lst='Todo', task=task: viewTask(task,lst)))
-            cards[x].config(background='lightgrey',highlightbackground='lightgrey')
-            cards[x].grid(row=y, column=0)
-            x += 1
-            y += 1
-            height += 1
-            if height == maxCards and count != len(todo)-1:
-                cards.append(Button(text='\/',width=space,height=1,font=('arial',12),pady=0,background='grey',command= lambda lst='todo',direction='down':scroll(lst,direction)))
-                cards[x].grid(row=y+1,column=0)
-                break
-        count += 1
-    y = 1
-    count = 0
-    for task in busy:
-        if count >= busyScrolled:
-            if busyScrolled != 0 and count == busyScrolled:
-                cards.append(Button(text='/\\', width=space, height=1, font=('arial', 12), pady=0, background='grey',command=lambda lst='busy', direction='up': scroll(lst, direction)))
-                cards[x].grid(row=y, column=1)
+                y += 1
+                height += 1
+            if height == maxCards and count != len(currentList.items)-1:
+                cards.append(Button(text='\/',width=space,height=1,font=('arial',12),pady=0,background='grey',command= lambda lst=currentList,direction=1: lst.scroll(direction)))
+                cards[x].grid(row=y+1,column=currentList.index)
                 x += 1
-            elif count == 0:
-                nothingNess = Label(text=' ', bg=bgColor,height=1)
-                nothingNess.grid(row=y, column=0)
-            y += 1
-            if len(task) > 30:
-                texttask = task[:30] + '\n' + task[30:]
-            else:
-                texttask = task
-            cards.append(Button(anchor='w',justify=LEFT, text=texttask, width=space, height=2, font=('arial', 12), pady=0,command=lambda lst='Busy', task=task: viewTask(task,lst)))
-            cards[x].config(background='lightgrey',highlightbackground='lightgrey')
-            cards[x].grid(row=y, column=1)
-            x += 1
-            y += 1
-            height += 1
-            if height == maxCards and count != len(busy)-1:
-                cards.append(Button(text='\/',width=space,height=1,font=('arial',12),pady=0,background='grey',command= lambda lst='busy',direction='down':scroll(lst,direction)))
-                cards[x].grid(row=y+1,column=1)
                 break
-        count += 1
-    y = 1
-    count = 0
-    for task in done:
-        if count >= doneScrolled:
-            if doneScrolled != 0 and count == doneScrolled:
-                cards.append(Button(text='/\\', width=space, height=1, font=('arial', 12), pady=0, background='grey',command=lambda lst='done', direction='up': scroll(lst, direction)))
-                cards[x].grid(row=y, column=2)
-                x += 1
-            elif count == 0:
-                nothingNess = Label(text=' ', bg=bgColor,height=1)
-                nothingNess.grid(row=y, column=0)
-            y += 1
-            if len(task) > 30:
-                texttask = task[:30] + '\n' + task[30:]
-            else:
-                texttask = task
-            cards.append(Button(anchor='w',justify=LEFT, text=texttask, width=space, height=2, font=('arial', 12), pady=0,command=lambda lst='Done', task=task: viewTask(task,lst)))
-            cards[x].config(background='lightgrey',highlightbackground='lightgrey')
-            cards[x].grid(row=y, column=2)
-            x += 1
-            y += 1
-            height += 1
-            if height == maxCards and count != len(done)-1:
-                cards.append(Button(text='\/', width=space, height=1, font=('arial', 12), pady=0, background='grey',command=lambda lst='done', direction='down': scroll(lst, direction)))
-                cards[x].grid(row=y + 1, column=2)
-                break
-        count += 1
+            elif height == maxCards and count == len(currentList.items)-1:
+                nothingNess = Label(text=' ', bg=bgColor, height=1, font=('arial', 16)).grid(row=y, column=currentList.index)
+            count += 1
+        listIndexNum += 1
+
 
     # some white space
     whiteLabels = []
@@ -749,14 +796,15 @@ def moveTask(task,lst):
 
     x = -1
     for line in f:
+        global lists
         x += 1
         if line[0] == '#':
             continue
         line = line.split(';')
         line[0] = int(line[0])
-        if line[1] == task[1]:
-            if line[0] > 2:
-                line[0] = 0
+        if line[1] == task.fullName.split(';')[1]:
+            if line[0] >= len(lists)-1:
+                line[0] = -1
             line[0] += 1
             f[x] = str(line[0]) + ';' + line[1] + ';' + line[2]
             file = open(board, 'w')
@@ -765,30 +813,33 @@ def moveTask(task,lst):
             file.close()
             break
     updateScreen()
-    if lst == 'Todo':
-        lst = 'Busy'
-    elif lst == 'Busy':
-        lst = 'Done'
-    else:
-        lst = 'Todo'
+    x = 0
+    for xlst in lists:
+        if xlst.name == lst.name:
+            break
+        x += 1
+    if x >= len(lists):
+        x = 0
+    lst = lists[x]
     viewTask(task,lst)
 
 
-def fDelete(task,lst):
+def fDelete(textTask,lst):
     f = open(board).readlines()
     for line in f:
         if line == '\n':
             continue
         linex = line.split(';')
-        if linex[1] == task[1]:
+        if linex[1] == textTask[1]:
             f.remove(line)
-            os.remove(board[:-9] + 'tasks/' + task[1] + ';' + (str(task[2]).replace('\n','')).replace(':','-') +'.txt')
+            lst.scroll(-1)
+            os.remove(board[:-9] + 'tasks/' + textTask[1] + ';' + (str(textTask[2]).replace('\n','')).replace(':','-') +'.txt')
             agendaF = open(board[:-9]+'agenda.txt').readlines()
             for line1 in agendaF:
                 if line1 == '\n':
                     continue
                 line1x = line1.split(';')
-                if line1x[3] == task[1]:
+                if line1x[3] == textTask[1]:
                     agendaF.remove(line1)
                     break
             agendaFile = open(board[:-9]+'agenda.txt','w')
@@ -803,13 +854,6 @@ def fDelete(task,lst):
             file.write(line)
     file.close()
     #Zorg dat scroll 1 omlaag gaat (indien nodig)
-    scrolledFileName = board[:-9]+lst.lower()+'Scrolled.txt'
-    scrolled = int(open(scrolledFileName).readlines()[0])
-    if scrolled > 0:
-        scrolled -= 1
-    file = open(scrolledFileName,'w')
-    file.write(str(scrolled))
-    file.close()
     updateScreen()
     global viewTaskWindow, agendaWindow
     try:
@@ -862,7 +906,7 @@ def newTask():
             label.grid()
         elif task != '':
             f = open(board).readlines()
-            f.append(('1' + ';' + task + ';' + str(timeStamp)+'\n'))
+            f.append(('0' + ';' + task + ';' + str(timeStamp)+'\n'))
             file = open(board, 'w')
             for line in f:
                 file.write(line)
